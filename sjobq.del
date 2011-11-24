@@ -1,0 +1,132 @@
+#!/bin/bash
+############################################################################
+#    Copyright (C) 2010 by Nestor Aguirre                                  #
+#    nfaguirrec@iff.csic.es                                                #
+#                                                                          #
+#    This program is free software; you can redistribute it and#or modify  #
+#    it under the terms of the GNU General Public License as published by  #
+#    the Free Software Foundation; either version 2 of the License, or     #
+#    (at your option) any later version.                                   #
+#                                                                          #
+#    This program is distributed in the hope that it will be useful,       #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+#    GNU General Public License for more details.                          #
+#                                                                          #
+#    You should have received a copy of the GNU General Public License     #
+#    along with this program; if not, write to the                         #
+#    Free Software Foundation, Inc.,                                       #
+#    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
+############################################################################
+
+DATA_DIR="/var/tmp/$USER/sjobq.data"
+COUNTER_FILE="$DATA_DIR/counter"
+CURRENT_JOB_HOME="$DATA_DIR/current"
+MAX_HISTORY="10"
+
+showJobs()
+{
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}' | sort -n`
+	popd &> /dev/null
+	
+	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
+	if [ -n "`ps -A | awk -v id=$lastID '($1==id){print "1"}'`" ]
+	then
+		currentPID="`cat $CURRENT_JOB_HOME/pid`"
+		spentTime=$(( $(date +%s) - $(cat $CURRENT_JOB_HOME/beginTime) ))
+		pstree -p $currentPID > $CURRENT_JOB_HOME/tree
+		pstree -p $currentPID | awk 'BEGIN{RS="[()]"}($0~/^[[:digit:]]+$/){printf $0" "}' | sed 's/$/\n/' > $CURRENT_JOB_HOME/pids
+			
+		echo "-------------"
+		echo " Current job"
+		echo "-------------"
+		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
+		echo "command      = `cat $CURRENT_JOB_HOME/com`"
+		echo "dir          = `cat $CURRENT_JOB_HOME/pwd`"
+		echo "time spent   = $((spentTime/3600))h $((spentTime/60))m $((spentTime%60))s"
+		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
+		echo "tree         ="
+		cat $CURRENT_JOB_HOME/tree | sed '{s/^/\t/g}'
+		echo ""
+	fi
+	
+	
+	if [ -n "$ID_LIST" ]
+	then
+		echo "-----------"
+		echo " Job queue"
+		echo "-----------"
+		
+		for procID in $ID_LIST
+		do
+			echo "id      = `cat $DATA_DIR/$procID.bid`"
+			echo "command = `cat $DATA_DIR/$procID.com`"
+			echo "dir     = `cat $DATA_DIR/$procID.pwd`"
+			echo ""
+		done
+	fi
+	
+	if [ -f "$DATA_DIR/history" ]
+	then
+		echo "---------"
+		echo " History"
+		echo "---------"
+		
+		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY ))
+	fi
+}
+
+deleteJob()
+{
+	ID=$1
+	
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	ID_LIST=`ls *.bid | sed '{s/[.].*//g}'`
+	popd &> /dev/null
+	
+	if [ $ID = "current" ]
+	then
+		kill -9 `cat $CURRENT_JOB_HOME/pids`
+		return
+	fi
+	
+	exist="0"
+	for IDL in $ID_LIST
+	do
+		if [ $IDL -eq $ID ]
+		then
+			exist="1"
+			rm $DATA_DIR/$ID.bid
+			rm $DATA_DIR/$ID.com
+			rm $DATA_DIR/$ID.pwd
+			
+			echo "Job with id=$ID has been deleted !!"
+			return
+		fi
+	done
+	
+	if [ $exist -eq "0" ]
+	then
+		echo "Job with id=$ID not found !!"
+	fi
+}
+
+if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
+then
+	echo "### Error ### The daemon sjobq.d is not running"
+	echo "              run it using \"sjobq.d start\""
+	exit 1
+fi
+
+if [ -n "$*" ]
+then
+	for delId in $*
+	do
+		deleteJob $delId
+	done
+else
+	showJobs
+fi
