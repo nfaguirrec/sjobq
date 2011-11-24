@@ -84,12 +84,19 @@ deleteJob()
 	
 	pushd . &> /dev/null
 	cd $DATA_DIR
-	ID_LIST=`ls *.bid | sed '{s/[.].*//g}'`
+	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
 	popd &> /dev/null
 	
 	if [ $ID = "current" ]
 	then
-		kill -9 `cat $CURRENT_JOB_HOME/pids`
+		PID_LIST=`cat $CURRENT_JOB_HOME/pids`
+		PID_FIRST=`echo $PID_LIST | awk '{print $1}'`
+		
+		if [ -n "`ps -A | awk '{print $1}' | grep "$PID_FIRST"`" ]
+		then
+			kill -9 $PID_LIST
+		fi
+		
 		return
 	fi
 	
