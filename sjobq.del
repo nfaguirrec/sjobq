@@ -1,7 +1,7 @@
 #!/bin/bash
 ############################################################################
-#    Copyright (C) 2010 by Nestor Aguirre                                  #
-#    nfaguirrec@iff.csic.es                                                #
+#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
+#    nfaguirrec@gmail.com                                                  #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -24,7 +24,10 @@ COUNTER_FILE="$DATA_DIR/counter"
 CURRENT_JOB_HOME="$DATA_DIR/current"
 MAX_HISTORY="10"
 
-showJobs()
+##
+# @brief
+##
+function showJobs()
 {
 	pushd . &> /dev/null
 	cd $DATA_DIR
@@ -45,7 +48,7 @@ showJobs()
 		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
 		echo "command      = `cat $CURRENT_JOB_HOME/com`"
 		echo "dir          = `cat $CURRENT_JOB_HOME/pwd`"
-		echo "time spent   = $((spentTime/3600))h $((spentTime/60))m $((spentTime%60))s"
+		echo "time spent   = $((spentTime/3600))h $(((spentTime/60)%60))m $((spentTime%60))s"
 		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
 		echo "tree         ="
 		cat $CURRENT_JOB_HOME/tree | sed '{s/^/\t/g}'
@@ -78,7 +81,10 @@ showJobs()
 	fi
 }
 
-deleteJob()
+##
+# @brief
+##
+function deleteJob()
 {
 	ID=$1
 	
@@ -97,6 +103,7 @@ deleteJob()
 			kill -9 $PID_LIST
 		fi
 		
+		echo "Job with id=current has been deleted !!"
 		return
 	fi
 	
@@ -121,19 +128,27 @@ deleteJob()
 	fi
 }
 
-if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
-then
-	echo "### Error ### The daemon sjobq.d is not running"
-	echo "              run it using \"sjobq.d start\""
-	exit 1
-fi
+##
+# @brief
+##
+function main()
+{
+	if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
+	then
+		echo "### Error ### The daemon sjobq.d is not running"
+		echo "              run it using \"sjobq.d start\""
+		exit 1
+	fi
 
-if [ -n "$*" ]
-then
-	for delId in $*
-	do
-		deleteJob $delId
-	done
-else
-	showJobs
-fi
+	if [ -n "$*" ]
+	then
+		for delId in $*
+		do
+			deleteJob $delId
+		done
+	else
+		showJobs
+	fi
+}
+
+main $*

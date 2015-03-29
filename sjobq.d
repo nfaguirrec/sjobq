@@ -1,7 +1,7 @@
 #!/bin/bash
 ############################################################################
-#    Copyright (C) 2010 by Nestor Aguirre                                  #
-#    nfaguirrec@iff.csic.es                                                #
+#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
+#    nfaguirrec@gmail.com                                                  #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -25,7 +25,10 @@ STOP_FILE="$DATA_DIR/stop"
 REFRESH_INTERVAL="2"
 CURRENT_JOB_HOME="$DATA_DIR/current"
 
-update()
+##
+# @brief
+##
+function update()
 {
 	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
 	local currentPID=""
@@ -45,7 +48,7 @@ update()
 			
 			echo "command      = `cat $CURRENT_JOB_HOME/com`" >> $DATA_DIR/history
 			echo "dir          = `cat $CURRENT_JOB_HOME/pwd`" >> $DATA_DIR/history
-			echo "time spent   = $((spentTime/3600))h $((spentTime/60))m $((spentTime%60))s" >> $DATA_DIR/history
+			echo "time spent   = $((spentTime/3600))h $(((spentTime/60)%60))m $((spentTime%60))s" >> $DATA_DIR/history
 			echo "" >> $DATA_DIR/history
 		fi
 		
@@ -100,7 +103,10 @@ update()
 	fi
 }
 
-start()
+##
+# @brief
+##
+function start()
 {
 	while [ 1 ]
 	do
@@ -115,60 +121,119 @@ start()
 	done
 }
 
-stop()
+##
+# @brief
+##
+function stop()
 {
 	echo "" > $STOP_FILE
 	sleep 3
 	rm -rf $DATA_DIR
 }
 
-case $1 in
-	start)
-		if [ ! -d "$DATA_DIR" ]
-		then
-			mkdir -p $DATA_DIR
-		fi
+##
+# @brief
+##
+function pause()
+{
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
+	popd &> /dev/null
+	
+	PID_LIST=`cat $CURRENT_JOB_HOME/pids`
+	PID_FIRST=`echo $PID_LIST | awk '{print $1}'`
+	
+	if [ -n "`ps -A | awk '{print $1}' | grep "$PID_FIRST"`" ]
+	then
+		kill -STOP $PID_LIST
+	fi
 		
-		nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
+	echo "Job with id=current has been paused !!"
+}
+
+##
+# @brief
+##
+function cont()
+{
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
+	popd &> /dev/null
+	
+	PID_LIST=`cat $CURRENT_JOB_HOME/pids`
+	PID_FIRST=`echo $PID_LIST | awk '{print $1}'`
+	
+	if [ -n "`ps -A | awk '{print $1}' | grep "$PID_FIRST"`" ]
+	then
+		kill -CONT $PID_LIST
+	fi
 		
-		echo "=============================="
-		echo " SJobQ daemon has been started"
-		echo "=============================="
-		;;
-	stop)
-		isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
-		if [ $isRunning -eq "0" ]
-		then
-			echo "### Error ### The daemon sjobq.d is not running"
-			echo "              run it using \"sjobq.d start\""
-			exit 1
-		else
+	echo "Job with id=current has been continued !!"
+}
+
+##
+# @brief
+##
+function main()
+{
+	case $1 in
+		start)
+			if [ ! -d "$DATA_DIR" ]
+			then
+				mkdir -p $DATA_DIR
+			fi
+			
+			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
+			
 			echo "=============================="
-			echo " SJobQ daemon has been stopped"
+			echo " SJobQ daemon has been started"
 			echo "=============================="
+			;;
+		stop)
+			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
+			if [ $isRunning -eq "0" ]
+			then
+				echo "### Error ### The daemon sjobq.d is not running"
+				echo "              run it using \"sjobq.d start\""
+				exit 1
+			else
+				echo "=============================="
+				echo " SJobQ daemon has been stopped"
+				echo "=============================="
+				stop
+			fi
+			
+			;;
+		pause)
+			pause
+			;;
+		cont)
+			cont
+			;;
+		restart)
 			stop
-		fi
-		
-		;;
-	restart)
-		stop
-		
-		if [ ! -d "$DATA_DIR" ]
-		then
-			mkdir -p $DATA_DIR
-		fi
-		
-		nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
-		
-		echo "================================"
-		echo " SJobQ daemon has been restarted"
-		echo "================================"
-		;;
-	__start)
-		start
-		;;
-	*)
-		echo "Usage: sjobq.d {start|stop|restart}"
-		;;
-esac
+			
+			if [ ! -d "$DATA_DIR" ]
+			then
+				mkdir -p $DATA_DIR
+			fi
+			
+			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
+			
+			echo "================================"
+			echo " SJobQ daemon has been restarted"
+			echo "================================"
+			;;
+		__start)
+			start
+			;;
+		*)
+			echo "Usage: sjobq.d {start|stop|restart}"
+			;;
+	esac
+}
+
+main $*
 

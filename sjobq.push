@@ -1,7 +1,7 @@
 #!/bin/bash
 ############################################################################
-#    Copyright (C) 2010 by Nestor Aguirre                                  #
-#    nfaguirrec@iff.csic.es                                                #
+#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
+#    nfaguirrec@gmail.com                                                  #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -22,38 +22,45 @@
 DATA_DIR="/var/tmp/$USER/sjobq.data"
 COUNTER_FILE="$DATA_DIR/counter"
 
-if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
-then
-	echo "### Error ### The daemon sjobq.d is not running"
-	echo "              run it using \"sjobq.d start\""
-	exit 1
-fi
-
-BID="X"
-if [ -f "$COUNTER_FILE" ]
-then
-	previous=`cat $COUNTER_FILE`
-	
-	if [ $previous -eq "32767" ]
+##
+# @brief
+##
+function main()
+{
+	if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
 	then
-		BID="0"
-	else
-		BID=$(( $previous + 1 ))
+		echo "### Error ### The daemon sjobq.d is not running"
+		echo "              run it using \"sjobq.d start\""
+		exit 1
 	fi
-	
-else
-	echo "0" > $COUNTER_FILE
-	BID=`cat $COUNTER_FILE`
-fi
-echo $BID > $COUNTER_FILE
 
-COMMAND=$*
+	BID="X"
+	if [ -f "$COUNTER_FILE" ]
+	then
+		previous=`cat $COUNTER_FILE`
+		
+		if [ $previous -eq "32767" ]
+		then
+			BID="0"
+		else
+			BID=$(( $previous + 1 ))
+		fi
+		
+	else
+		echo "0" > $COUNTER_FILE
+		BID=`cat $COUNTER_FILE`
+	fi
+	echo $BID > $COUNTER_FILE
 
-echo "id      = $BID"
-echo "command = $COMMAND"
-echo "dir     = $PWD"
+	COMMAND=$*
 
-echo "$BID" > $DATA_DIR/$BID.bid
-echo "$COMMAND" > $DATA_DIR/$BID.com
-echo "$PWD" > $DATA_DIR/$BID.pwd
+	echo "id      = $BID"
+	echo "command = $COMMAND"
+	echo "dir     = $PWD"
 
+	echo "$BID" > $DATA_DIR/$BID.bid
+	echo "$COMMAND" > $DATA_DIR/$BID.com
+	echo "$PWD" > $DATA_DIR/$BID.pwd
+}
+
+main $*
