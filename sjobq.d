@@ -28,6 +28,32 @@ CURRENT_JOB_HOME="$DATA_DIR/current"
 ##
 # @brief
 ##
+diffTime()
+{
+	local time0=`echo $1 | sed 's/@/ /g'`
+	local time1=`echo $2 | sed 's/@/ /g'`
+	
+	local DAYS=""
+	local HOURS=""
+	local MINUTES=""
+	local SECONDS=""
+	
+	# %F = full date, %T = %H:%M:%S, %N = nanoseconds, %Z = time zone.
+	
+	DAYS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 / 24 ))
+	time1=$(date -d"$time1 +$DAYS days" '+%F %T.%N %Z')
+	HOURS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 ))
+	time1=$(date -d"$time1 +$HOURS hours" '+%F %T.%N %Z')
+	MINUTES=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 ))
+	time1=$(date -d"$time1 +$MINUTES minutes" '+%F %T.%N %Z')
+	SECONDS=$(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s))))
+
+	printf "%02d-%02d:%02d:%02d\n" "$DAYS" "$HOURS" "$MINUTES" "$SECONDS"
+}
+
+##
+# @brief
+##
 function update()
 {
 	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
@@ -44,11 +70,12 @@ function update()
 		# exactly after that this has finished
 		if [ "`cat $CURRENT_JOB_HOME/alive`" -eq "1" ]
 		then
-			spentTime=$(( $(date +%s) - $(cat $CURRENT_JOB_HOME/beginTime) ))
+			beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
+			endTime=$(cat $CURRENT_JOB_HOME/beginTime)
 			
 			echo "command      = `cat $CURRENT_JOB_HOME/com`" >> $DATA_DIR/history
 			echo "dir          = `cat $CURRENT_JOB_HOME/pwd`" >> $DATA_DIR/history
-			echo "time spent   = $((spentTime/3600))h $(((spentTime/60)%60))m $((spentTime%60))s" >> $DATA_DIR/history
+			echo "time spent   = `diffTime $beginTime $endTime`" >> $DATA_DIR/history
 			echo "" >> $DATA_DIR/history
 		fi
 		
@@ -59,7 +86,7 @@ function update()
 		if [ -n "$IDL" ]
 		then
 			# Register the begin time
-			echo $(date +%s) > $CURRENT_JOB_HOME/beginTime
+			echo $(date -u '+%F %T.%N %Z' | sed 's/ /@/g') > $CURRENT_JOB_HOME/beginTime
 			
 			# this will go to the appropriate directory
 			# where the command should be to executed
@@ -180,6 +207,19 @@ function main()
 {
 	case $1 in
 		start)
+			#------------------------------------
+			# Thanks to john0312 (Dec 1, 2014)
+			#------------------------------------
+			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
+			if [ $isRunning -eq "1" ]
+			then
+				# It's already running.
+				echo "### Error ### The daemon sjobq.d is already running"
+				echo "              stop it using \"sjobq.d stop\""
+				exit 1
+			fi
+			#------------------------------------
+				
 			if [ ! -d "$DATA_DIR" ]
 			then
 				mkdir -p $DATA_DIR
@@ -236,4 +276,3 @@ function main()
 }
 
 main $*
-

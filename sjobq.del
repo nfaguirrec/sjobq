@@ -27,6 +27,32 @@ MAX_HISTORY="10"
 ##
 # @brief
 ##
+diffTime()
+{
+	local time0=`echo $1 | sed 's/@/ /g'`
+	local time1=`echo $2 | sed 's/@/ /g'`
+	
+	local DAYS=""
+	local HOURS=""
+	local MINUTES=""
+	local SECONDS=""
+	
+	# %F = full date, %T = %H:%M:%S, %N = nanoseconds, %Z = time zone.
+	
+	DAYS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 / 24 ))
+	time1=$(date -d"$time1 +$DAYS days" '+%F %T.%N %Z')
+	HOURS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 ))
+	time1=$(date -d"$time1 +$HOURS hours" '+%F %T.%N %Z')
+	MINUTES=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 ))
+	time1=$(date -d"$time1 +$MINUTES minutes" '+%F %T.%N %Z')
+	SECONDS=$(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s))))
+
+	printf "%02d-%02d:%02d:%02d\n" "$DAYS" "$HOURS" "$MINUTES" "$SECONDS"
+}
+
+##
+# @brief
+##
 function showJobs()
 {
 	pushd . &> /dev/null
@@ -38,17 +64,19 @@ function showJobs()
 	if [ -n "`ps -A | awk -v id=$lastID '($1==id){print "1"}'`" ]
 	then
 		currentPID="`cat $CURRENT_JOB_HOME/pid`"
-		spentTime=$(( $(date +%s) - $(cat $CURRENT_JOB_HOME/beginTime) ))
+		beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
+		endTime=$(cat $CURRENT_JOB_HOME/beginTime)
 		pstree -p $currentPID > $CURRENT_JOB_HOME/tree
 		pstree -p $currentPID | awk 'BEGIN{RS="[()]"}($0~/^[[:digit:]]+$/){printf $0" "}' | sed 's/$/\n/' > $CURRENT_JOB_HOME/pids
 			
-		echo "-------------"
-		echo " Current job"
-		echo "-------------"
+		echo "+-------------+"
+		echo "| Current job |"
+		echo "+-------------+"
+		echo ""
 		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
 		echo "command      = `cat $CURRENT_JOB_HOME/com`"
 		echo "dir          = `cat $CURRENT_JOB_HOME/pwd`"
-		echo "time spent   = $((spentTime/3600))h $(((spentTime/60)%60))m $((spentTime%60))s"
+		echo "time spent   = `diffTime $beginTime $endTime`"
 		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
 		echo "tree         ="
 		cat $CURRENT_JOB_HOME/tree | sed '{s/^/\t/g}'
@@ -58,26 +86,59 @@ function showJobs()
 	
 	if [ -n "$ID_LIST" ]
 	then
-		echo "-----------"
-		echo " Job queue"
-		echo "-----------"
-		
+		printf "%s\n" "+-------+"
+		echo "| QUEUE |"
+		printf "%s\n" "---------------------------------------------------------------"
+		printf "|%6s |%42s |  %s\n" "id" "directory" "command"
+		printf "|%6s |%42s |  %s\n" "" "" ""
 		for procID in $ID_LIST
 		do
-			echo "id      = `cat $DATA_DIR/$procID.bid`"
-			echo "command = `cat $DATA_DIR/$procID.com`"
-			echo "dir     = `cat $DATA_DIR/$procID.pwd`"
-			echo ""
+			id=`cat $DATA_DIR/$procID.bid`
+			dir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g'`
+			command=`cat $DATA_DIR/$procID.com`
+			
+			printf "|%6s |%42s |  " $id $dir
+			echo $command
 		done
+			
+		printf "%s\n" "---------------------------------------------------------------"
 	fi
+	echo ""
 	
 	if [ -f "$DATA_DIR/history" ]
 	then
-		echo "---------"
-		echo " History"
-		echo "---------"
-		
-		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY ))
+		printf "%s\n" "+-------------+"
+		         echo "| HISTORY     |"
+		printf "%s\n" "+--------------------------------------------------------------------"
+		printf "|%12s |%42s |  %s\n" "time spent" "directory" "command"
+		printf "|%12s |%42s |  %s\n" "" "" ""
+		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY )) | sed 's/\/home\/'$USER'\//~\//g' | \
+		awk '
+			BEGIN{
+				n=0
+			}
+			
+			($1=="time"){
+				timeSpent = sprintf("%12s",$4)
+				
+				line[n] = "|"timeSpent" | "dir" |  "command
+				n+=1
+			}
+			
+			($1=="dir"){
+				dir = sprintf("%41s",$3)
+			}
+			
+			($1=="command"){
+				command = sprintf("%s",$3)
+			}
+			
+			END{
+				for(i=0;i<n;i++)
+					print line[i]
+			}'
+			
+		printf "%s\n\n" "---------------------------------------------------------------------"
 	fi
 }
 
