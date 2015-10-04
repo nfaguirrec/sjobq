@@ -88,7 +88,7 @@ function showJobs()
 	then
 		printf "%s\n" "+-------+"
 		echo "| QUEUE |"
-		printf "%s\n" "---------------------------------------------------------------"
+		printf "%s\n" "+-------+-------------------------------------------+----------"
 		printf "|%6s |%42s |  %s\n" "id" "directory" "command"
 		printf "|%6s |%42s |  %s\n" "" "" ""
 		for procID in $ID_LIST
@@ -101,7 +101,7 @@ function showJobs()
 			echo $command
 		done
 			
-		printf "%s\n" "---------------------------------------------------------------"
+		printf "%s\n" "+-------+-------------------------------------------+----------"
 	fi
 	echo ""
 	
@@ -109,7 +109,7 @@ function showJobs()
 	then
 		printf "%s\n" "+-------------+"
 		         echo "| HISTORY     |"
-		printf "%s\n" "+--------------------------------------------------------------------"
+		printf "%s\n" "+-------------+-------------------------------------------+----------"
 		printf "|%12s |%42s |  %s\n" "time spent" "directory" "command"
 		printf "|%12s |%42s |  %s\n" "" "" ""
 		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY )) | sed 's/\/home\/'$USER'\//~\//g' | \
@@ -138,7 +138,7 @@ function showJobs()
 					print line[i]
 			}'
 			
-		printf "%s\n\n" "---------------------------------------------------------------------"
+		printf "%s\n\n" "+-------------+-------------------------------------------+----------"
 	fi
 }
 
