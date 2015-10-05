@@ -130,7 +130,8 @@ function showJobs()
 			}
 			
 			($1=="command"){
-				command = sprintf("%s",$3)
+				gsub("command[[:blank:]]+= ", "")
+				command = sprintf("%s",$0)
 			}
 			
 			END{
