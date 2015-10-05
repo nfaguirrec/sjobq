@@ -33,23 +33,27 @@
 <h3>
 <a id="installing" class="anchor" href="#installing" aria-hidden="true"><span class="octicon octicon-link"></span></a>INSTALLING</h3>
 
-<pre><code>$ svn checkout http://sjobq.googlecode.com/svn/trunk/ sjobq-read-only
-A    sjobq-read-only/sjobq.d
-A    sjobq-read-only/sjobq.del
-A    sjobq-read-only/sjobq.stat
-A    sjobq-read-only/sjobq.push
-Checked out revision 3.
+<pre><code>DOWNLOAD THE .tar.gz FILE FROM THIS PAGE AND TYPE NEXT COMMANDS
+$ tar xvfz nfaguirrec-sjobq-xxxxxxx.tar.gz 
+nfaguirrec-sjobq-xxxxxxx/
+nfaguirrec-sjobq-xxxxxxx/sjobq.d
+nfaguirrec-sjobq-xxxxxxx/sjobq.del
+nfaguirrec-sjobq-xxxxxxx/sjobq.push
+nfaguirrec-sjobq-xxxxxxx/sjobq.stat
 
-$ ls sjobq-read-only/
+$ ls nfaguirrec-sjobq-xxxxxxx
 sjobq.d  sjobq.del  sjobq.push  sjobq.stat
 
-$ cp sjobq-read-only/* $HOME/bin/
+$ cp nfaguirrec-sjobq-xxxxxxx/* $HOME/bin/
 </code></pre>
 
 <h3>
 <a id="demon-startup" class="anchor" href="#demon-startup" aria-hidden="true"><span class="octicon octicon-link"></span></a>DEMON STARTUP</h3>
 
 <pre><code>$ sjobq.d start
+==============================
+ SJobQ daemon has been started
+==============================
 </code></pre>
 
 <h3>
@@ -69,7 +73,7 @@ dir     = /home/nestor/Downloads
 
 $ sjobq.push find /etc/ -name \"\*.conf\" \&gt; output \; sleep 30
 id      = 3
-command = find /etc/ -name "*.conf" &gt; output
+command = find /etc/ -name "*.conf" &gt; output ; sleep 30
 dir     = /home/nestor/Downloads
 </code></pre>
 
@@ -79,50 +83,41 @@ dir     = /home/nestor/Downloads
 <p>The command sjobq.stat will show the jobs which are running, queued and finished. </p>
 
 <pre><code>$ sjobq.stat
--------------
- Current job
--------------
-pid          = 5644
++-------------+
+| Current job |
++-------------+
+
+pid          = 29406
 command      = sleep 30s
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 3s
-pids         = 5644 
+dir          = ~/Downloads
+time spent   = 00-00:00:09
+pids         = 29406 
 tree         =
-        sleep(5644)
+        sleep(29406)
 
------------
- Job queue
------------
-id      = 2
-command = echo "Hola"
-dir     = /home/nestor/Downloads
-
-id      = 3
-command = find /etc/ -name "*.conf" &gt; output ; sleep 30
-dir     = /home/nestor/Downloads
-
----------
- History
----------
++-------+
+| QUEUE |
++-------+----------------------------+----------
+|    id |                  directory |  command
+|       |                            |  
+|     2 |                ~/Downloads |  echo "Hola"
+|     3 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------+----------------------------+----------
 </code></pre>
 
 <p>after 2 minutes ...</p>
 
 <pre><code>$ sjobq.stat
----------
- History
----------
-command      = sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
 
-command      = echo "Hola"
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 4s
-
-command      = find /etc/ -name "*.conf" &gt; output ; sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
++-------------+
+| HISTORY     |
++-------------+----------------------------+----------
+|  time spent |                  directory |  command
+|             |                            |  
+| 00-00:00:30 |                ~/Downloads |  sleep 30s
+| 00-00:00:04 |                ~/Downloads |  echo "Hola"
+| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+----------------------------+----------
 </code></pre>
 
 <h3>
@@ -133,55 +128,49 @@ time spent   = 0h 0m 31s
 <pre><code>$ sjobq.push sleep 1h
 id      = 4
 command = sleep 1h
-dir     = /home/nestor/Downloads
+dir     = ~/Downloads
 
 $ sjobq.push sleep 2h
 id      = 5
 command = sleep 1h
-dir     = /home/nestor/Downloads
+dir     = ~/Downloads
 
 $ sjobq.push sleep 3h
 id      = 6
 command = sleep 1h
-dir     = /home/nestor/Downloads
+dir     = ~/Downloads
 
 $ sjobq.stat
--------------
- Current job
--------------
-pid          = 27378
++-------------+
+| Current job |
++-------------+
+
+pid          = 30778
 command      = sleep 1h
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 13s
-pids         = 27378 
+dir          = ~/Downloads
+time spent   = 00-00:00:29
+pids         = 30778 
 tree         =
-        sleep(27378)
+        sleep(30778)
 
------------
- Job queue
------------
-id      = 5
-command = sleep 2h
-dir     = /home/nestor/Downloads
++-------+
+| QUEUE |
++-------+----------------------------+----------
+|    id |                  directory |  command
+|       |                            |  
+|     5 |                ~/Downloads |  sleep 2h
+|     6 |                ~/Downloads |  sleep 3h
++-------+----------------------------+----------
 
-id      = 6
-command = sleep 3h
-dir     = /home/nestor/Downloads
-
----------
- History
----------
-command      = sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
-
-command      = echo "Hola"
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 4s
-
-command      = find /etc/ -name "*.conf" &gt; output ; sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
++-------------+
+| HISTORY     |
++-------------+----------------------------+----------
+|  time spent |                  directory |  command
+|             |                            |  
+| 00-00:00:30 |                ~/Downloads |  sleep 30s
+| 00-00:00:04 |                ~/Downloads |  echo "Hola"
+| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+----------------------------+----------
 </code></pre>
 
 <p>You can delete a queued job by using its identifier (id). The id is provided in the output of the sqjob.stat command. </p>
@@ -190,38 +179,35 @@ time spent   = 0h 0m 31s
 Job with id=6 has been deleted !!
 
 $ sjobq.stat
--------------
- Current job
--------------
-pid          = 27378
++-------------+
+| Current job |
++-------------+
+
+pid          = 30778
 command      = sleep 1h
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 13s
-pids         = 27378 
+dir          = ~/Downloads
+time spent   = 00-00:00:29
+pids         = 30778 
 tree         =
-        sleep(27378)
+        sleep(30778)
 
------------
- Job queue
------------
-id      = 5
-command = sleep 2h
-dir     = /home/nestor/Downloads
++-------+
+| QUEUE |
++-------+----------------------------+----------
+|    id |                  directory |  command
+|       |                            |  
+|     5 |                ~/Downloads |  sleep 2h
++-------+----------------------------+----------
 
----------
- History
----------
-command      = sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
-
-command      = echo "Hola"
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 4s
-
-command      = find /etc/ -name "*.conf" &gt; output ; sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
++-------------+
+| HISTORY     |
++-------------+----------------------------+----------
+|  time spent |                  directory |  command
+|             |                            |  
+| 00-00:00:30 |                ~/Downloads |  sleep 30s
+| 00-00:00:04 |                ~/Downloads |  echo "Hola"
+| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+----------------------------+----------
 </code></pre>
 
 <p>Also it is possible to delete the running job by using the identifier "current". </p>
@@ -230,41 +216,37 @@ time spent   = 0h 0m 31s
 Job with id=current has been deleted !!
 
 $ sjobq.stat
--------------
- Current job
--------------
-pid          = 28465
++-------------+
+| Current job |
++-------------+
+
+pid          = 31544
 command      = sleep 2h
-dir          = /home/nestor/Downloads
-time spent   = 0h 1m 6s
-pids         = 28465 
+dir          = ~/Downloads
+time spent   = 00-00:00:05
+pids         = 31544 
 tree         =
-        sleep(28465)
+        sleep(31544)
 
----------
- History
----------
-command      = sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
-
-command      = echo "Hola"
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 4s
-
-command      = find /etc/ -name "*.conf" &gt; output ; sleep 30
-dir          = /home/nestor/Downloads
-time spent   = 0h 0m 31s
-
-command      = sleep 1h
-dir          = /home/nestor/Downloads
-time spent   = 0h 5m 8s
++-------------+
+| HISTORY     |
++-------------+----------------------------+----------
+|  time spent |                  directory |  command
+|             |                            |  
+| 00-00:00:30 |                ~/Downloads |  sleep 30s
+| 00-00:00:04 |                ~/Downloads |  echo "Hola"
+| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
+| 00-00:02:57 |                ~/Downloads |  sleep 1h
++-------------+----------------------------+----------
 </code></pre>
 
 <h3>
 <a id="daemon-shutdown" class="anchor" href="#daemon-shutdown" aria-hidden="true"><span class="octicon octicon-link"></span></a>DAEMON SHUTDOWN</h3>
 
 <pre><code>$ sjobq.d stop
+==============================
+ SJobQ daemon has been stopped
+==============================
 </code></pre>
 
 <h3>
