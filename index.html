@@ -97,12 +97,12 @@ tree         =
 
 +-------+
 | QUEUE |
-+-------+----------------------------+----------
-|    id |                  directory |  command
-|       |                            |  
-|     2 |                ~/Downloads |  echo "Hola"
-|     3 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
-+-------+----------------------------+----------
++-------+------------------+----------
+|    id |        directory |  command
+|       |                  |  
+|     2 |      ~/Downloads |  echo "Hola"
+|     3 |      ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------+------------------+----------
 </code></pre>
 
 <p>after 2 minutes ...</p>
@@ -111,13 +111,13 @@ tree         =
 
 +-------------+
 | HISTORY     |
-+-------------+----------------------------+----------
-|  time spent |                  directory |  command
-|             |                            |  
-| 00-00:00:30 |                ~/Downloads |  sleep 30s
-| 00-00:00:04 |                ~/Downloads |  echo "Hola"
-| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
-+-------------+----------------------------+----------
++-------------+------------------+----------
+|  time spent |        directory |  command
+|             |                  |  
+| 00-00:00:30 |      ~/Downloads |  sleep 30s
+| 00-00:00:04 |      ~/Downloads |  echo "Hola"
+| 00-00:00:31 |      ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+------------------+----------
 </code></pre>
 
 <h3>
@@ -155,22 +155,22 @@ tree         =
 
 +-------+
 | QUEUE |
-+-------+----------------------------+----------
-|    id |                  directory |  command
-|       |                            |  
-|     5 |                ~/Downloads |  sleep 2h
-|     6 |                ~/Downloads |  sleep 3h
-+-------+----------------------------+----------
++-------+------------------+----------
+|    id |        directory |  command
+|       |                  |  
+|     5 |      ~/Downloads |  sleep 2h
+|     6 |      ~/Downloads |  sleep 3h
++-------+------------------+----------
 
 +-------------+
 | HISTORY     |
-+-------------+----------------------------+----------
-|  time spent |                  directory |  command
-|             |                            |  
-| 00-00:00:30 |                ~/Downloads |  sleep 30s
-| 00-00:00:04 |                ~/Downloads |  echo "Hola"
-| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
-+-------------+----------------------------+----------
++-------------+------------------+----------
+|  time spent |        directory |  command
+|             |                  |  
+| 00-00:00:30 |      ~/Downloads |  sleep 30s
+| 00-00:00:04 |      ~/Downloads |  echo "Hola"
+| 00-00:00:31 |      ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+------------------+----------
 </code></pre>
 
 <p>You can delete a queued job by using its identifier (id). The id is provided in the output of the sqjob.stat command. </p>
@@ -193,21 +193,21 @@ tree         =
 
 +-------+
 | QUEUE |
-+-------+----------------------------+----------
-|    id |                  directory |  command
-|       |                            |  
-|     5 |                ~/Downloads |  sleep 2h
-+-------+----------------------------+----------
++-------+------------------+----------
+|    id |        directory |  command
+|       |                  |  
+|     5 |      ~/Downloads |  sleep 2h
++-------+------------------+----------
 
 +-------------+
 | HISTORY     |
-+-------------+----------------------------+----------
-|  time spent |                  directory |  command
-|             |                            |  
-| 00-00:00:30 |                ~/Downloads |  sleep 30s
-| 00-00:00:04 |                ~/Downloads |  echo "Hola"
-| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
-+-------------+----------------------------+----------
++-------------+------------------+----------
+|  time spent |        directory |  command
+|             |                  |  
+| 00-00:00:30 |      ~/Downloads |  sleep 30s
+| 00-00:00:04 |      ~/Downloads |  echo "Hola"
+| 00-00:00:31 |      ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
++-------------+------------------+----------
 </code></pre>
 
 <p>Also it is possible to delete the running job by using the identifier "current". </p>
@@ -230,14 +230,14 @@ tree         =
 
 +-------------+
 | HISTORY     |
-+-------------+----------------------------+----------
-|  time spent |                  directory |  command
-|             |                            |  
-| 00-00:00:30 |                ~/Downloads |  sleep 30s
-| 00-00:00:04 |                ~/Downloads |  echo "Hola"
-| 00-00:00:31 |                ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
-| 00-00:02:57 |                ~/Downloads |  sleep 1h
-+-------------+----------------------------+----------
++-------------+------------------+----------
+|  time spent |        directory |  command
+|             |                  |  
+| 00-00:00:30 |      ~/Downloads |  sleep 30s
+| 00-00:00:04 |      ~/Downloads |  echo "Hola"
+| 00-00:00:31 |      ~/Downloads |  find /etc/ -name "*.conf" &gt; output ; sleep 30
+| 00-00:02:57 |      ~/Downloads |  sleep 1h
++-------------+------------------+----------
 </code></pre>
 
 <h3>
