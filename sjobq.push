@@ -41,13 +41,13 @@ function main()
 		
 		if [ $previous -eq "32767" ]
 		then
-			BID="0"
+			BID="1"
 		else
 			BID=$(( $previous + 1 ))
 		fi
 		
 	else
-		echo "0" > $COUNTER_FILE
+		echo "1" > $COUNTER_FILE
 		BID=`cat $COUNTER_FILE`
 	fi
 	echo $BID > $COUNTER_FILE
@@ -56,7 +56,7 @@ function main()
 
 	echo "id      = $BID"
 	echo "command = $COMMAND"
-	echo "dir     = $PWD"
+	echo "dir     = `echo $PWD | sed 's/\/home\/'$USER'\//~\//g'`"
 
 	echo "$BID" > $DATA_DIR/$BID.bid
 	echo "$COMMAND" > $DATA_DIR/$BID.com

@@ -75,7 +75,7 @@ function showJobs()
 		echo ""
 		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
 		echo "command      = `cat $CURRENT_JOB_HOME/com`"
-		echo "dir          = `cat $CURRENT_JOB_HOME/pwd`"
+		echo "dir          = `cat $CURRENT_JOB_HOME/pwd | sed 's/\/home\/'$USER'\//~\//g'`"
 		echo "time spent   = `diffTime $beginTime $endTime`"
 		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
 		echo "tree         ="
@@ -198,7 +198,14 @@ function main()
 	if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
 	then
 		echo "### Error ### The daemon sjobq.d is not running"
-		echo "              run it using \"sjobq.d start\""
+		echo "              You might want to run \"sjobq.d start\" to correct this."
+		exit 1
+	fi
+	
+	if [ ! -d "$DATA_DIR" ]
+	then
+		echo "### Error ### Data directory $DATA_DIR is empty"
+		echo "              You might want to run \"sjobq.d restart\" to correct this."
 		exit 1
 	fi
 
