@@ -28,6 +28,32 @@ CURRENT_JOB_HOME="$DATA_DIR/current"
 ##
 # @brief
 ##
+diffTime()
+{
+	local time0=`echo $1 | sed 's/@/ /g'`
+	local time1=`echo $2 | sed 's/@/ /g'`
+	
+	local DAYS=""
+	local HOURS=""
+	local MINUTES=""
+	local SECONDS=""
+	
+	# %F = full date, %T = %H:%M:%S, %N = nanoseconds, %Z = time zone.
+	
+	DAYS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 / 24 ))
+	time1=$(date -d"$time1 +$DAYS days" '+%F %T.%N %Z')
+	HOURS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 ))
+	time1=$(date -d"$time1 +$HOURS hours" '+%F %T.%N %Z')
+	MINUTES=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 ))
+	time1=$(date -d"$time1 +$MINUTES minutes" '+%F %T.%N %Z')
+	SECONDS=$(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s))))
+
+	printf "%02d-%02d:%02d:%02d\n" "$DAYS" "$HOURS" "$MINUTES" "$SECONDS"
+}
+
+##
+# @brief
+##
 function update()
 {
 	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
@@ -44,11 +70,12 @@ function update()
 		# exactly after that this has finished
 		if [ "`cat $CURRENT_JOB_HOME/alive`" -eq "1" ]
 		then
-			spentTime=$(( $(date +%s) - $(cat $CURRENT_JOB_HOME/beginTime) ))
+			beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
+			endTime=$(cat $CURRENT_JOB_HOME/beginTime)
 			
 			echo "command      = `cat $CURRENT_JOB_HOME/com`" >> $DATA_DIR/history
 			echo "dir          = `cat $CURRENT_JOB_HOME/pwd`" >> $DATA_DIR/history
-			echo "time spent   = $((spentTime/3600))h $(((spentTime/60)%60))m $((spentTime%60))s" >> $DATA_DIR/history
+			echo "time spent   = `diffTime $beginTime $endTime`" >> $DATA_DIR/history
 			echo "" >> $DATA_DIR/history
 		fi
 		
@@ -59,7 +86,7 @@ function update()
 		if [ -n "$IDL" ]
 		then
 			# Register the begin time
-			echo $(date +%s) > $CURRENT_JOB_HOME/beginTime
+			echo $(date -u '+%F %T.%N %Z' | sed 's/ /@/g') > $CURRENT_JOB_HOME/beginTime
 			
 			# this will go to the appropriate directory
 			# where the command should be to executed
@@ -126,8 +153,15 @@ function start()
 ##
 function stop()
 {
+	local id=""
+	
+	# @todo Maybe STOP_FILE it is not still necessary 
 	echo "" > $STOP_FILE
-	sleep 3
+	sleep $REFRESH_INTERVAL
+	
+	# @todo It's neccessary to catch the output of kill command to avoid the message Killed
+	id="`ps -u $USER | grep "sjobq.d$" | awk '{print $1}'`"
+	kill -s SIGKILL $id &> /dev/null
 	rm -rf $DATA_DIR
 }
 
@@ -180,6 +214,19 @@ function main()
 {
 	case $1 in
 		start)
+			#------------------------------------
+			# Thanks to john0312 (Dec 1, 2014)
+			#------------------------------------
+			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
+			if [ $isRunning -eq "1" ]
+			then
+				# It's already running.
+				echo "### Error ### The daemon sjobq.d is already running"
+				echo "              You might want to run \"sjobq.d stop\" to stop it."
+				exit 1
+			fi
+			#------------------------------------
+				
 			if [ ! -d "$DATA_DIR" ]
 			then
 				mkdir -p $DATA_DIR
@@ -187,21 +234,21 @@ function main()
 			
 			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
 			
-			echo "=============================="
+			echo "==============================="
 			echo " SJobQ daemon has been started"
-			echo "=============================="
+			echo "==============================="
 			;;
 		stop)
 			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
 			if [ $isRunning -eq "0" ]
 			then
 				echo "### Error ### The daemon sjobq.d is not running"
-				echo "              run it using \"sjobq.d start\""
+				echo "              You might want to run \"sjobq.d start\" to correct this."
 				exit 1
 			else
-				echo "=============================="
+				echo "==============================="
 				echo " SJobQ daemon has been stopped"
-				echo "=============================="
+				echo "==============================="
 				stop
 			fi
 			
@@ -222,9 +269,9 @@ function main()
 			
 			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
 			
-			echo "================================"
+			echo "================================="
 			echo " SJobQ daemon has been restarted"
-			echo "================================"
+			echo "================================="
 			;;
 		__start)
 			start
@@ -236,4 +283,3 @@ function main()
 }
 
 main $*
-
