@@ -119,8 +119,11 @@ function showJobs()
 	
 	if [ -f "$DATA_DIR/history" ]
 	then
-		maxCharInDirColumn=`grep -E "dir\s+=" $DATA_DIR/history | sed 's/\/home\/'$USER'\//~\//g' \
-			| sed -r 's/dir\s+=//g' | gawk '(length(line)<length($0)){line=$0}END{print line}' | wc -c`
+		maxCharInDirColumn=`tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history \
+			| grep -E "dir\s+=" \
+			| sed 's/\/home\/'$USER'\//~\//g' \
+			| sed -r 's/dir\s+=//g' \
+			| gawk '(length(line)<length($0)){line=$0}END{print line}' | wc -c`
 			
 		rowSeparator=`echo -n "+-------------+"`
 		rowSeparator=$rowSeparator`echo "-" | awk '{for(i=0;i<'$maxCharInDirColumn';i++) printf($1)}'`
@@ -131,7 +134,7 @@ function showJobs()
 		echo $rowSeparator
 		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "time spent" "directory " "command"
 		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "" "" ""
-		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY )) | sed 's/\/home\/'$USER'\//~\//g' | \
+		tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history | sed 's/\/home\/'$USER'\//~\//g' | \
 		awk '
 			BEGIN{
 				n=0
