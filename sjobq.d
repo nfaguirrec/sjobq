@@ -100,7 +100,7 @@ function update()
 			echo "echo \$! > $CURRENT_JOB_HOME/pid" >> .tmp2156456
 			
 			chmod +x .tmp2156456
-			./.tmp2156456
+			bash ./.tmp2156456
 			rm .tmp2156456
 			
 			rm -f $DATA_DIR/$IDL.bid
