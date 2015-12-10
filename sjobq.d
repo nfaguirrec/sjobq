@@ -153,8 +153,15 @@ function start()
 ##
 function stop()
 {
+	local id=""
+	
+	# @todo Maybe STOP_FILE it is not still necessary 
 	echo "" > $STOP_FILE
-	sleep 3
+	sleep $REFRESH_INTERVAL
+	
+	# @todo It's neccessary to catch the output of kill command to avoid the message Killed
+	id="`ps -u $USER | grep "sjobq.d$" | awk '{print $1}'`"
+	kill -s SIGKILL $id &> /dev/null
 	rm -rf $DATA_DIR
 }
 
@@ -215,7 +222,7 @@ function main()
 			then
 				# It's already running.
 				echo "### Error ### The daemon sjobq.d is already running"
-				echo "              stop it using \"sjobq.d stop\""
+				echo "              You might want to run \"sjobq.d stop\" to stop it."
 				exit 1
 			fi
 			#------------------------------------
@@ -227,21 +234,21 @@ function main()
 			
 			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
 			
-			echo "=============================="
+			echo "==============================="
 			echo " SJobQ daemon has been started"
-			echo "=============================="
+			echo "==============================="
 			;;
 		stop)
 			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
 			if [ $isRunning -eq "0" ]
 			then
 				echo "### Error ### The daemon sjobq.d is not running"
-				echo "              run it using \"sjobq.d start\""
+				echo "              You might want to run \"sjobq.d start\" to correct this."
 				exit 1
 			else
-				echo "=============================="
+				echo "==============================="
 				echo " SJobQ daemon has been stopped"
-				echo "=============================="
+				echo "==============================="
 				stop
 			fi
 			
@@ -262,9 +269,9 @@ function main()
 			
 			nohup $0 __start > $DATA_DIR/log 2> $DATA_DIR/err &
 			
-			echo "================================"
+			echo "================================="
 			echo " SJobQ daemon has been restarted"
-			echo "================================"
+			echo "================================="
 			;;
 		__start)
 			start

@@ -75,7 +75,7 @@ function showJobs()
 		echo ""
 		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
 		echo "command      = `cat $CURRENT_JOB_HOME/com`"
-		echo "dir          = `cat $CURRENT_JOB_HOME/pwd`"
+		echo "dir          = `cat $CURRENT_JOB_HOME/pwd | sed 's/\/home\/'$USER'\//~\//g'`"
 		echo "time spent   = `diffTime $beginTime $endTime`"
 		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
 		echo "tree         ="
@@ -86,33 +86,55 @@ function showJobs()
 	
 	if [ -n "$ID_LIST" ]
 	then
+		maxCharInDirColumn=0
+		for procID in $ID_LIST
+		do
+			nCharInDir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g' | wc -c`
+			if [ "$maxCharInDirColumn" -lt "$nCharInDir" ]; then maxCharInDirColumn=$nCharInDir; fi
+		done
+		if [ "$maxCharInDirColumn" -lt 20 ]; then maxCharInDirColumn=20; fi
+			
+		rowSeparator=`echo -n "+-------+"`
+		rowSeparator=$rowSeparator`echo "-" | awk '{for(i=0;i<='$maxCharInDirColumn';i++) printf($1)}'`
+		rowSeparator=$rowSeparator`echo "+--------------------"`
+		
 		printf "%s\n" "+-------+"
 		echo "| QUEUE |"
-		printf "%s\n" "+-------+-------------------------------------------+----------"
-		printf "|%6s |%42s |  %s\n" "id" "directory" "command"
-		printf "|%6s |%42s |  %s\n" "" "" ""
+		echo $rowSeparator
+		printf "|%6s |%"$maxCharInDirColumn"s | %s\n" "id" "directory" "command"
+		printf "|%6s |%"$maxCharInDirColumn"s | %s\n" "" "" ""
 		for procID in $ID_LIST
 		do
 			id=`cat $DATA_DIR/$procID.bid`
 			dir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g'`
 			command=`cat $DATA_DIR/$procID.com`
 			
-			printf "|%6s |%42s |  " $id $dir
+			printf "|%6s |%"$maxCharInDirColumn"s |  " $id $dir
 			echo $command
 		done
 			
-		printf "%s\n" "+-------+-------------------------------------------+----------"
+		echo $rowSeparator
 	fi
 	echo ""
 	
 	if [ -f "$DATA_DIR/history" ]
 	then
+		maxCharInDirColumn=`tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history \
+			| grep -E "dir\s+=" \
+			| sed 's/\/home\/'$USER'\//~\//g' \
+			| sed -r 's/dir\s+=//g' \
+			| gawk '(length(line)<length($0)){line=$0}END{print line}' | wc -c`
+			
+		rowSeparator=`echo -n "+-------------+"`
+		rowSeparator=$rowSeparator`echo "-" | awk '{for(i=0;i<'$maxCharInDirColumn';i++) printf($1)}'`
+		rowSeparator=$rowSeparator`echo "+--------------------"`
+		
 		printf "%s\n" "+-------------+"
 		         echo "| HISTORY     |"
-		printf "%s\n" "+-------------+-------------------------------------------+----------"
-		printf "|%12s |%42s |  %s\n" "time spent" "directory" "command"
-		printf "|%12s |%42s |  %s\n" "" "" ""
-		cat $DATA_DIR/history | tail -n $(( 4*$MAX_HISTORY )) | sed 's/\/home\/'$USER'\//~\//g' | \
+		echo $rowSeparator
+		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "time spent" "directory " "command"
+		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "" "" ""
+		tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history | sed 's/\/home\/'$USER'\//~\//g' | \
 		awk '
 			BEGIN{
 				n=0
@@ -121,16 +143,17 @@ function showJobs()
 			($1=="time"){
 				timeSpent = sprintf("%12s",$4)
 				
-				line[n] = "|"timeSpent" | "dir" |  "command
+				line[n] = "|"timeSpent" |"dir" |  "command
 				n+=1
 			}
 			
 			($1=="dir"){
-				dir = sprintf("%41s",$3)
+				dir = sprintf("%'$(($maxCharInDirColumn-1))'s",$3)
 			}
 			
 			($1=="command"){
-				command = sprintf("%s",$3)
+				gsub("command[[:blank:]]+=[[:blank:]]+", "")
+				command = sprintf("%s",$0)
 			}
 			
 			END{
@@ -138,7 +161,7 @@ function showJobs()
 					print line[i]
 			}'
 			
-		printf "%s\n\n" "+-------------+-------------------------------------------+----------"
+		echo $rowSeparator
 	fi
 }
 
@@ -197,7 +220,14 @@ function main()
 	if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
 	then
 		echo "### Error ### The daemon sjobq.d is not running"
-		echo "              run it using \"sjobq.d start\""
+		echo "              You might want to run \"sjobq.d start\" to correct this."
+		exit 1
+	fi
+	
+	if [ ! -d "$DATA_DIR" ]
+	then
+		echo "### Error ### Data directory $DATA_DIR is empty"
+		echo "              You might want to run \"sjobq.d restart\" to correct this."
 		exit 1
 	fi
 
