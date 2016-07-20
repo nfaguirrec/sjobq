@@ -1,4 +1,4 @@
-SJobQ is a very simple queue system written in Bourne shell. It manages serial executions that run in a local form. The aim is to keep the computer working all the time, in order to exploit as much as possible your available computing resources. Regarding standard available programs to manage queues, very often they are a bit complicated to install and/or to configure, or simply you need administrative privileges to install them and you have no those permissions. For these cases, SJobQ is the solution, because in order to install it, you only need to download six files and that is all !. You can start to work. 
+SJobQ is a very simple queue system written in Bourne shell. It manages serial executions that run in a local form. The aim is to keep the computer working all the time, in order to exploit as much as possible your available computing resources. Regarding standard available programs to manage queues, very often they are a bit complicated to install and/or to configure, or simply you need administrative privileges to install them and you have no those permissions. For these cases, SJobQ is the solution, because in order to install it, you only need to download six files and that's all !. You can start to work. 
 
 ### INSTALLING
 Download the .zip file from this page and extract the files,
@@ -21,7 +21,7 @@ $ git clone https://github.com/nfaguirrec/sjobq.git
 This should be the content of the sjobq directory if previous steps were successful:
 ```
 $ ls sjobq
-sjobq.client  sjobq.daemon  sjobq.del  sjobq.sort  sjobq.push  sjobq.stat
+README.md  sjobq.client  sjobq.daemon  sjobq.del  sjobq.sort  sjobq.push  sjobq.stat
 ```
 Finally, to install the program, you simply have to copy the files in a directory included in the PATH system variable, as for example bin in your home directory:
 ```
