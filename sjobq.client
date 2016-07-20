@@ -1,0 +1,407 @@
+#!/bin/bash
+############################################################################
+#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
+#    nfaguirrec@gmail.com                                                  #
+#                                                                          #
+#    This program is free software; you can redistribute it and#or modify  #
+#    it under the terms of the GNU General Public License as published by  #
+#    the Free Software Foundation; either version 2 of the License, or     #
+#    (at your option) any later version.                                   #
+#                                                                          #
+#    This program is distributed in the hope that it will be useful,       #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+#    GNU General Public License for more details.                          #
+#                                                                          #
+#    You should have received a copy of the GNU General Public License     #
+#    along with this program; if not, write to the                         #
+#    Free Software Foundation, Inc.,                                       #
+#    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
+############################################################################
+
+DATA_DIR="/var/tmp/$USER/sjobq.data"
+COUNTER_FILE="$DATA_DIR/counter"
+CURRENT_JOB_HOME="$DATA_DIR/current"
+MAX_HISTORY="10"
+
+##
+# @brief
+##
+diffTime()
+{
+	local time0=`echo $1 | sed 's/@/ /g'`
+	local time1=`echo $2 | sed 's/@/ /g'`
+	
+	local DAYS=""
+	local HOURS=""
+	local MINUTES=""
+	local SECONDS=""
+	
+	# %F = full date, %T = %H:%M:%S, %N = nanoseconds, %Z = time zone.
+	
+	DAYS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 / 24 ))
+	time1=$(date -d"$time1 +$DAYS days" '+%F %T.%N %Z')
+	HOURS=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 / 60 ))
+	time1=$(date -d"$time1 +$HOURS hours" '+%F %T.%N %Z')
+	MINUTES=$(( $(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s)))) / 60 ))
+	time1=$(date -d"$time1 +$MINUTES minutes" '+%F %T.%N %Z')
+	SECONDS=$(printf '%s' $(( $(date -u -d"$time0" +%s) - $(date -u -d"$time1" +%s))))
+
+	printf "%02d-%02d:%02d:%02d\n" "$DAYS" "$HOURS" "$MINUTES" "$SECONDS"
+}
+
+##
+# @brief
+##
+function sjobq.stat()
+{
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	jobIDList=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}' | sort -n`
+	popd &> /dev/null
+	
+	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
+	if [ -n "`ps -u $USER | awk -v id=$lastID '($1==id){print "1"}'`" ]
+	then
+		currentPID="`cat $CURRENT_JOB_HOME/pid`"
+		beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
+		endTime=$(cat $CURRENT_JOB_HOME/beginTime)
+		pstree -p $currentPID > $CURRENT_JOB_HOME/tree
+		pstree -p $currentPID | awk 'BEGIN{RS="[()]"}($0~/^[[:digit:]]+$/){printf $0" "}' | sed 's/$/\n/' > $CURRENT_JOB_HOME/pids
+			
+		echo "+-------------+"
+		echo "| Current job |"
+		echo "+-------------+"
+		echo ""
+		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
+		echo "command      = `cat $CURRENT_JOB_HOME/com`"
+		echo "dir          = `cat $CURRENT_JOB_HOME/pwd | sed 's/\/home\/'$USER'\//~\//g'`"
+		echo "time spent   = `diffTime $beginTime $endTime`"
+		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
+		echo "tree         ="
+		cat $CURRENT_JOB_HOME/tree | sed '{s/^/\t/g}'
+		echo ""
+	fi
+	
+	if [ -z "$jobIDList" -a -z "$lastID" ]
+	then
+		echo "Empty queue! You might want to run \"sjobq.push\" first."
+		exit
+	fi
+	
+	if [ -n "$jobIDList" ]
+	then
+		maxCharInDirColumn=0
+		for procID in $jobIDList
+		do
+			nCharInDir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g' | wc -c`
+			if [ "$maxCharInDirColumn" -lt "$nCharInDir" ]; then maxCharInDirColumn=$nCharInDir; fi
+		done
+		if [ "$maxCharInDirColumn" -lt 20 ]; then maxCharInDirColumn=20; fi
+			
+		rowSeparator=`echo -n "+-------+"`
+		rowSeparator=$rowSeparator`echo "-" | awk '{for(i=0;i<='$maxCharInDirColumn';i++) printf($1)}'`
+		rowSeparator=$rowSeparator`echo "+--------------------"`
+		
+		printf "%s\n" "+-------+"
+		echo "| QUEUE |"
+		echo $rowSeparator
+		printf "|%6s |%"$maxCharInDirColumn"s | %s\n" "id" "directory" "command"
+		printf "|%6s |%"$maxCharInDirColumn"s | %s\n" "" "" ""
+		for procID in $jobIDList
+		do
+			id=`cat $DATA_DIR/$procID.bid`
+			dir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g'`
+			command=`cat $DATA_DIR/$procID.com`
+			
+			printf "|%6s |%"$maxCharInDirColumn"s |  " $id $dir
+			echo $command
+		done
+			
+		echo $rowSeparator
+	fi
+	echo ""
+	
+	if [ -f "$DATA_DIR/history" ]
+	then
+		maxCharInDirColumn=`tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history \
+			| grep -E "dir\s+=" \
+			| sed 's/\/home\/'$USER'\//~\//g' \
+			| sed -r 's/dir\s+=//g' \
+			| gawk '(length(line)<length($0)){line=$0}END{print line}' | wc -c`
+			
+		rowSeparator=`echo -n "+-------------+"`
+		rowSeparator=$rowSeparator`echo "-" | awk '{for(i=0;i<'$maxCharInDirColumn';i++) printf($1)}'`
+		rowSeparator=$rowSeparator`echo "+--------------------"`
+		
+		printf "%s\n" "+-------------+"
+		         echo "| HISTORY     |"
+		echo $rowSeparator
+		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "time spent" "directory " "command"
+		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "" "" ""
+		tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history | sed 's/\/home\/'$USER'\//~\//g' | \
+		awk '
+			BEGIN{
+				n=0
+			}
+			
+			($1=="time"){
+				timeSpent = sprintf("%12s",$4)
+				
+				line[n] = "|"timeSpent" |"dir" |  "command
+				n+=1
+			}
+			
+			($1=="dir"){
+				dir = sprintf("%'$(($maxCharInDirColumn-1))'s",$3)
+			}
+			
+			($1=="command"){
+				gsub("command[[:blank:]]+=[[:blank:]]+", "")
+				command = sprintf("%s",$0)
+			}
+			
+			END{
+				for(i=0;i<n;i++)
+					print line[i]
+			}'
+			
+		echo $rowSeparator
+	fi
+}
+
+##
+# @brief
+##
+function deleteJob()
+{
+	local jobID=$1
+	
+	pushd . &> /dev/null
+	cd $DATA_DIR
+	jobIDList=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
+	popd &> /dev/null
+	
+	if [ $jobID = "current" ]
+	then
+		procIDList=`cat $CURRENT_JOB_HOME/pids`
+		procIDFirst=`echo $procIDList | awk '{print $1}'`
+		
+		if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
+		then
+			kill -9 $procIDList
+		fi
+		
+		echo "Job with id=current has been deleted !!"
+		return
+	fi
+	
+	exist="0"
+	for IDL in $jobIDList
+	do
+		if [ $IDL -eq $jobID ]
+		then
+			exist="1"
+			rm $DATA_DIR/$jobID.bid
+			rm $DATA_DIR/$jobID.com
+			rm $DATA_DIR/$jobID.pwd
+			
+			echo "Job with id=$jobID has been deleted !!"
+			return
+		fi
+	done
+	
+	if [ $exist -eq "0" ]
+	then
+		echo "Job with id=$jobID not found !!"
+	fi
+}
+
+##
+# @brief
+##
+function sjobq.push()
+{
+	local command=$*
+	
+	if [ -z "$command" ]
+	then
+		echo "### ERROR ### Empty job. The queue will not be affected."
+		exit
+	fi
+	
+	local jobID="X"
+	if [ -f "$COUNTER_FILE" ]
+	then
+		previous=`cat $COUNTER_FILE`
+		
+		if [ $previous -eq "32767" ]
+		then
+			jobID="1"
+		else
+			jobID=$(( $previous + 1 ))
+		fi
+		
+	else
+		echo "1" > $COUNTER_FILE
+		jobID=`cat $COUNTER_FILE`
+	fi
+	echo $jobID > $COUNTER_FILE
+	
+	echo "id      = $jobID"
+	echo "command = $command"
+	echo "dir     = `echo $PWD | sed 's/\/home\/'$USER'\//~\//g'`"
+
+	echo "$jobID" > $DATA_DIR/$jobID.bid
+	echo "$command" > $DATA_DIR/$jobID.com
+	echo "$PWD" > $DATA_DIR/$jobID.pwd
+}
+
+##
+# @brief
+##
+function sjobq.sort()
+{
+	local action=$1
+	local jobID=$2
+	local exchangeID=$3
+	
+	cd $DATA_DIR
+	local firstID=`ls -l *.bid 2> /dev/null | awk '{print $NF}' | sed '{s/[.].*//g}' | sort -n | head -n1`
+	local lastID=`ls -l *.bid 2> /dev/null | awk '{print $NF}' | sed '{s/[.].*//g}' | sort -n | tail -n1`
+	local beforeID=`ls -l *.bid 2> /dev/null | awk '{print $NF}' | sed '{s/[.].*//g}' | sort -n | grep $jobID -B1 2> /dev/null | head -n1`
+	local afterID=`ls -l *.bid 2> /dev/null | awk '{print $NF}' | sed '{s/[.].*//g}' | sort -n | grep $jobID -A1 2> /dev/null | tail -n1`
+	popd &> /dev/null
+	
+	if [ -z "$firstID" ]
+	then
+		echo "### ERROR ### Impossible to locate the ID for the first job"
+		exit
+	fi
+	
+	if [ -z "$lastID" ]
+	then
+		echo "### ERROR ### Impossible to locate the ID for the last job"
+		exit
+	fi
+	
+	case $action in
+		"raise")
+			targetID=$beforeID
+			;;
+		"lower")
+			targetID=$afterID
+			;;
+		"top")
+			targetID=$firstID
+			;;
+		"bottom")
+			targetID=$lastID
+			;;
+		"swap")
+			if [ -n "$exchangeID" ]
+			then
+				targetID=$exchangeID
+			else
+				echo "### ERROR ### sjobq.sort swap jobID jobID2"
+				echo "                                        ^  "
+				echo "              Target ID (jobID2) undefined"
+				exit
+			fi
+			;;
+		*)
+			echo "Usage: sjobq.sort command jobID [jobID2]"
+			echo ""
+			echo "Available commands:"
+			echo "     - raise"
+			echo "              Raises the specified job into the queue"
+			echo "     - lower"
+			echo "              Lowers the specified job into the queue"
+			echo "     - top"
+			echo "              Moves the specified jobID to the top of the queue"
+			echo "     - bottom"
+			echo "              Moves the specified jobID to the bottom of the queue"
+			echo "     - swap"
+			echo "              Swaps the positions of the specified jobs jobID and jobID2 in the queue"
+			echo ""
+			exit
+	esac
+	
+	if [ "$jobID" -ne "$targetID" ]
+	then
+		cd $DATA_DIR
+		
+		mv $jobID.com tmp$$.com
+		mv $jobID.pwd tmp$$.pwd
+		
+		mv $targetID.com $jobID.com
+		mv $targetID.pwd $jobID.pwd
+		
+		mv tmp$$.com $targetID.com
+		mv tmp$$.pwd $targetID.pwd
+		
+		popd &> /dev/null
+	fi
+}
+
+##
+# @brief
+##
+function sjobq.delete()
+{
+	if [ -n "$*" ]
+	then
+		for delId in $*
+		do
+			deleteJob $delId
+		done
+	else
+		echo "Usage: sjobq.del jobID"
+		exit
+	fi
+}
+
+##
+# @brief
+##
+function main()
+{
+	local command=$1
+	shift # $1 will be discarded
+	
+	if [ -z "`ps -u $USER | grep "sjobq.daemon$"`" ]
+	then
+		echo "### Error ### The daemon sjobq.daemon is not running"
+		echo "              You might want to run \"sjobq.daemon start\" to fix this."
+		exit 1
+	fi
+	
+	if [ ! -d "$DATA_DIR" ]
+	then
+		echo "### Error ### Data directory $DATA_DIR is empty"
+		echo "              You might want to run \"sjobq.daemon restart\" to fix this."
+		exit 1
+	fi
+	
+	case $command in
+		"stat")
+			sjobq.stat $*
+			;;
+		"push")
+			sjobq.push $*
+			;;
+		"sort")
+			sjobq.sort $*
+			;;
+		"delete")
+			sjobq.delete $*
+			;;
+		*)
+			echo "### ERROR ### Unknown command"
+			echo "              You might want to run upper the level commands:"
+			echo "                  sjobq.stat, sjobq.push, sjobq.sort, sjobq.del"
+			exit
+	esac
+}
+
+main $*

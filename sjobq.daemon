@@ -54,12 +54,12 @@ diffTime()
 ##
 # @brief
 ##
-function update()
+function refreshQueue()
 {
 	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
 	local currentPID=""
 	
-	if [ -z "`ps -A | awk -v id=$lastID '($1==id){print "1"}'`" ]
+	if [ -z "`ps -u $USER | awk -v id=$lastID '($1==id){print "1"}'`" ]
 	then
 		pushd . &> /dev/null
 		cd $DATA_DIR
@@ -133,7 +133,7 @@ function update()
 ##
 # @brief
 ##
-function start()
+function startDaemon()
 {
 	while [ 1 ]
 	do
@@ -144,67 +144,67 @@ function start()
 		fi
 			
 		sleep $REFRESH_INTERVAL
-		update  > /dev/null
+		refreshQueue  > /dev/null
 	done
 }
 
 ##
 # @brief
 ##
-function stop()
+function stopDaemon()
 {
 	local id=""
 	
-	# @todo Maybe STOP_FILE it is not still necessary 
 	echo "" > $STOP_FILE
 	sleep $REFRESH_INTERVAL
 	
-	# @todo It's neccessary to catch the output of kill command to avoid the message Killed
-	id="`ps -u $USER | grep "sjobq.d$" | awk '{print $1}'`"
-	kill -s SIGKILL $id &> /dev/null
-	rm -rf $DATA_DIR
+	if [ "$1" = "clean"  ]
+	then
+		procIDList=`cat $CURRENT_JOB_HOME/pids`
+		procIDFirst=`echo $procIDList | awk '{print $1}'`
+		
+		if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
+		then
+			kill -9 $procIDList
+		fi
+		
+		echo "Job with id=current has been deleted !!"
+		
+		rm -rf $DATA_DIR
+		echo "The SjobQ configuration has been cleaned up successfully !!"
+	fi
 }
 
 ##
 # @brief
 ##
-function pause()
+function pauseCurrentJob()
 {
-	pushd . &> /dev/null
-	cd $DATA_DIR
-	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
-	popd &> /dev/null
+	procIDList=`cat $CURRENT_JOB_HOME/pids`
+	procIDFirst=`echo $procIDList | awk '{print $1}'`
 	
-	PID_LIST=`cat $CURRENT_JOB_HOME/pids`
-	PID_FIRST=`echo $PID_LIST | awk '{print $1}'`
-	
-	if [ -n "`ps -A | awk '{print $1}' | grep "$PID_FIRST"`" ]
+	if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
 	then
-		kill -STOP $PID_LIST
+		kill -STOP $procIDList
 	fi
 		
-	echo "Job with id=current has been paused !!"
+	echo "Current job has been paused !!"
 }
 
 ##
 # @brief
 ##
-function cont()
+function continueCurrentJob()
 {
-	pushd . &> /dev/null
-	cd $DATA_DIR
-	ID_LIST=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}'`
-	popd &> /dev/null
+	procIDList=`cat $CURRENT_JOB_HOME/pids`
+	procIDFirst=`echo $procIDList | awk '{print $1}'`
 	
-	PID_LIST=`cat $CURRENT_JOB_HOME/pids`
-	PID_FIRST=`echo $PID_LIST | awk '{print $1}'`
-	
-	if [ -n "`ps -A | awk '{print $1}' | grep "$PID_FIRST"`" ]
+	if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
 	then
-		kill -CONT $PID_LIST
+		kill -CONT $procIDList
 	fi
 		
-	echo "Job with id=current has been continued !!"
+	echo "Current job has been continued !!"
 }
 
 ##
@@ -214,18 +214,14 @@ function main()
 {
 	case $1 in
 		start)
-			#------------------------------------
-			# Thanks to john0312 (Dec 1, 2014)
-			#------------------------------------
-			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
-			if [ $isRunning -eq "1" ]
+			runningID=`ps -u $USER | grep "sjobq.daemon$" | head -n1 | awk '{print $1; exit}'`
+			
+			if [ "$runningID" -ne "$$" ]
 			then
-				# It's already running.
-				echo "### Error ### The daemon sjobq.d is already running"
-				echo "              You might want to run \"sjobq.d stop\" to stop it."
+				echo "### Error ### The daemon sjobq.daemon is already running"
+				echo "              You might want to run \"sjobq.daemon stop\" to stop it."
 				exit 1
 			fi
-			#------------------------------------
 				
 			if [ ! -d "$DATA_DIR" ]
 			then
@@ -239,28 +235,30 @@ function main()
 			echo "==============================="
 			;;
 		stop)
-			isRunning="`ps -u $USER | grep "sjobq.d$" | awk '{a[NR]=$1}END{ if(a[2]==(a[1]+1)) print 0; else print 1}'`"
-			if [ $isRunning -eq "0" ]
+			runningID=`ps -u $USER | grep "sjobq.daemon$" | head -n1 | awk '{print $1; exit}'`
+			
+			if [ "$runningID" -eq "$$" ]
 			then
-				echo "### Error ### The daemon sjobq.d is not running"
-				echo "              You might want to run \"sjobq.d start\" to correct this."
+				echo "### Error ### The daemon sjobq.daemon is not running"
+				echo "              You might want to run \"sjobq.daemon start\" to correct this."
 				exit 1
 			else
+				stopDaemon $2
+				
 				echo "==============================="
 				echo " SJobQ daemon has been stopped"
 				echo "==============================="
-				stop
 			fi
 			
 			;;
 		pause)
-			pause
+			pauseCurrentJob
 			;;
 		cont)
-			cont
+			continueCurrentJob
 			;;
 		restart)
-			stop
+			stopDaemon $2
 			
 			if [ ! -d "$DATA_DIR" ]
 			then
@@ -274,10 +272,10 @@ function main()
 			echo "================================="
 			;;
 		__start)
-			start
+			startDaemon
 			;;
 		*)
-			echo "Usage: sjobq.d {start|stop|restart}"
+			echo "Usage: sjobq.daemon {start|stop|restart}"
 			;;
 	esac
 }

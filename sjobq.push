@@ -1,6 +1,6 @@
 #!/bin/bash
 ############################################################################
-#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
+#    Copyright (C) 2010-2016 by Nestor Aguirre                             #
 #    nfaguirrec@gmail.com                                                  #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
@@ -19,48 +19,4 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
-DATA_DIR="/var/tmp/$USER/sjobq.data"
-COUNTER_FILE="$DATA_DIR/counter"
-
-##
-# @brief
-##
-function main()
-{
-	if [ -z "`ps -u $USER | grep "sjobq.d$"`" ]
-	then
-		echo "### Error ### The daemon sjobq.d is not running"
-		echo "              run it using \"sjobq.d start\""
-		exit 1
-	fi
-
-	BID="X"
-	if [ -f "$COUNTER_FILE" ]
-	then
-		previous=`cat $COUNTER_FILE`
-		
-		if [ $previous -eq "32767" ]
-		then
-			BID="1"
-		else
-			BID=$(( $previous + 1 ))
-		fi
-		
-	else
-		echo "1" > $COUNTER_FILE
-		BID=`cat $COUNTER_FILE`
-	fi
-	echo $BID > $COUNTER_FILE
-
-	COMMAND=$*
-
-	echo "id      = $BID"
-	echo "command = $COMMAND"
-	echo "dir     = `echo $PWD | sed 's/\/home\/'$USER'\//~\//g'`"
-
-	echo "$BID" > $DATA_DIR/$BID.bid
-	echo "$COMMAND" > $DATA_DIR/$BID.com
-	echo "$PWD" > $DATA_DIR/$BID.pwd
-}
-
-main $*
+sjobq.client push $*
