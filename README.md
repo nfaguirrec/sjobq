@@ -155,6 +155,7 @@ tree         =
 +-------------+------------------+--------------------
 ```
 You can sort the queued jobs by using its identifier (id). The id is provided in the output of the sqjob.stat command.
+
 For example:
 
 Move the specified jobID to the top of the queue:
@@ -256,6 +257,7 @@ tree         =
 |    id |        directory |  command
 |       |                  |  
 |     5 |      ~/Downloads |  sleep 2h
+|     7 |      ~/Downloads |  sleep 4h
 +-------+------------------+----------
 
 +-------------+
@@ -286,6 +288,14 @@ time spent   = 00-00:00:05
 pids         = 31544 
 tree         =
         sleep(31544)
+        
++-------+
+| QUEUE |
++-------+------------------+----------
+|    id |        directory |  command
+|       |                  |  
+|     7 |      ~/Downloads |  sleep 4h
++-------+------------------+----------
 
 +-------------+
 | HISTORY     |
