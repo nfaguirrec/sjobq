@@ -1,23 +1,28 @@
 #!/bin/bash
-############################################################################
-#    Copyright (C) 2010-2015 by Nestor Aguirre                             #
-#    nfaguirrec@gmail.com                                                  #
-#                                                                          #
-#    This program is free software; you can redistribute it and#or modify  #
-#    it under the terms of the GNU General Public License as published by  #
-#    the Free Software Foundation; either version 2 of the License, or     #
-#    (at your option) any later version.                                   #
-#                                                                          #
-#    This program is distributed in the hope that it will be useful,       #
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-#    GNU General Public License for more details.                          #
-#                                                                          #
-#    You should have received a copy of the GNU General Public License     #
-#    along with this program; if not, write to the                         #
-#    Free Software Foundation, Inc.,                                       #
-#    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
-############################################################################
+########################################################################################
+#    Copyright (C) 2010-2017 by Nestor F. Aguirre                                      #
+#    nfaguirrec@gmail.com                                                              #
+#                                                                                      #
+#    Redistribution and use in source and binary forms, with or without                #
+#    modification, are permitted provided that the following conditions are met:       #
+#                                                                                      #
+#    1. Redistributions of source code must retain the above copyright notice, this    #
+#       list of conditions and the following disclaimer.                               #
+#    2. Redistributions in binary form must reproduce the above copyright notice,      #
+#       this list of conditions and the following disclaimer in the documentation      #
+#       and/or other materials provided with the distribution.                         #
+#                                                                                      #
+#    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND   #
+#    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED     #
+#    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE            #
+#    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR   #
+#    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES    #
+#    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;      #
+#    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND       #
+#    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT        #
+#    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS     #
+#    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                      #
+########################################################################################
 
 DATA_DIR="/var/tmp/$USER/sjobq.data"
 COUNTER_FILE="$DATA_DIR/counter"
@@ -60,30 +65,37 @@ function sjobq.stat()
 	jobIDList=`ls *.bid 2> /dev/null | sed '{s/[.].*//g}' | sort -n`
 	popd &> /dev/null
 	
-	local lastID="`cat $CURRENT_JOB_HOME/pid 2> /dev/null`"
-	if [ -n "`ps -u $USER | awk -v id=$lastID '($1==id){print "1"}'`" ]
-	then
-		currentPID="`cat $CURRENT_JOB_HOME/pid`"
-		beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
-		endTime=$(cat $CURRENT_JOB_HOME/beginTime)
-		pstree -p $currentPID > $CURRENT_JOB_HOME/tree
-		pstree -p $currentPID | awk 'BEGIN{RS="[()]"}($0~/^[[:digit:]]+$/){printf $0" "}' | sed 's/$/\n/' > $CURRENT_JOB_HOME/pids
-			
-		echo "+-------------+"
-		echo "| Current job |"
-		echo "+-------------+"
-		echo ""
-		echo "pid          = `cat $CURRENT_JOB_HOME/pid`"
-		echo "command      = `cat $CURRENT_JOB_HOME/com`"
-		echo "dir          = `cat $CURRENT_JOB_HOME/pwd | sed 's/\/home\/'$USER'\//~\//g'`"
-		echo "time spent   = `diffTime $beginTime $endTime`"
-		echo "pids         = `cat $CURRENT_JOB_HOME/pids`"
-		echo "tree         ="
-		cat $CURRENT_JOB_HOME/tree | sed '{s/^/\t/g}'
-		echo ""
-	fi
+	lastIDAll=""
+	simultaneousJobs=`cat $DATA_DIR/sjobs`
+	for cid in `seq 1 $simultaneousJobs`
+	do
+		lastID="`cat $CURRENT_JOB_HOME-$cid/pid 2> /dev/null`"
+		lastIDAll="$lastIDAll-$lastID"
+		if [ -n "`ps -u $USER | awk -v id=$lastID '($1==id){print "1"}'`" ]
+		then
+			currentPID="`cat $CURRENT_JOB_HOME-$cid/pid`"
+			beginTime=`date -u '+%F %T.%N %Z' | sed 's/ /@/g'`
+			endTime=$(cat $CURRENT_JOB_HOME-$cid/beginTime)
+			pstree -p $currentPID > $CURRENT_JOB_HOME-$cid/tree
+			pstree -p $currentPID | awk 'BEGIN{RS="[()]"}($0~/^[[:digit:]]+$/){printf $0" "}' | sed 's/$/\n/' > $CURRENT_JOB_HOME-$cid/pids
+				
+			echo "+-------------+"
+			echo "| Current job |"
+			echo "+-------------+"
+			echo ""
+			echo "cid          = $cid"
+			echo "pid          = `cat $CURRENT_JOB_HOME-$cid/pid`"
+			echo "command      = `cat $CURRENT_JOB_HOME-$cid/com`"
+			echo "dir          = `cat $CURRENT_JOB_HOME-$cid/pwd | sed 's/^.*\/home\/'$USER'\//~\//g'`"
+			echo "time spent   = `diffTime $beginTime $endTime`"
+			echo "pids         = `cat $CURRENT_JOB_HOME-$cid/pids`"
+			echo "tree         ="
+			cat $CURRENT_JOB_HOME-$cid/tree | sed '{s/^/\t/g}'
+			echo ""
+		fi
+	done
 	
-	if [ -z "$jobIDList" -a -z "$lastID" ]
+	if [ -z "$jobIDList" -a -z "$lastIDAll" ]
 	then
 		echo "Empty queue! You might want to run \"sjobq.push\" first."
 		exit
@@ -94,7 +106,7 @@ function sjobq.stat()
 		maxCharInDirColumn=0
 		for procID in $jobIDList
 		do
-			nCharInDir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g' | wc -c`
+			nCharInDir=`cat $DATA_DIR/$procID.pwd | sed 's/^.*\/home\/'$USER'\//~\//g' | wc -c`
 			if [ "$maxCharInDirColumn" -lt "$nCharInDir" ]; then maxCharInDirColumn=$nCharInDir; fi
 		done
 		if [ "$maxCharInDirColumn" -lt 20 ]; then maxCharInDirColumn=20; fi
@@ -111,7 +123,7 @@ function sjobq.stat()
 		for procID in $jobIDList
 		do
 			id=`cat $DATA_DIR/$procID.bid`
-			dir=`cat $DATA_DIR/$procID.pwd | sed 's/\/home\/'$USER'\//~\//g'`
+			dir=`cat $DATA_DIR/$procID.pwd | sed 's/^.*\/home\/'$USER'\//~\//g'`
 			command=`cat $DATA_DIR/$procID.com`
 			
 			printf "|%6s |%"$maxCharInDirColumn"s |  " $id $dir
@@ -126,7 +138,7 @@ function sjobq.stat()
 	then
 		maxCharInDirColumn=`tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history \
 			| grep -E "dir\s+=" \
-			| sed 's/\/home\/'$USER'\//~\//g' \
+			| sed -E 's/\s+\/.*\/home\/'$USER'\// ~\//g' \
 			| sed -r 's/dir\s+=//g' \
 			| gawk '(length(line)<length($0)){line=$0}END{print line}' | wc -c`
 			
@@ -139,8 +151,8 @@ function sjobq.stat()
 		echo $rowSeparator
 		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "time spent" "directory " "command"
 		printf "|%12s |%"$maxCharInDirColumn"s| %s\n" "" "" ""
-		tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history | sed 's/\/home\/'$USER'\//~\//g' | \
-		awk '
+		tail -n $(( 4*$MAX_HISTORY )) $DATA_DIR/history | sed -E 's/\s+\/.*\/home\/'$USER'\// ~\//g' | \
+		gawk '
 			BEGIN{
 				n=0
 			}
@@ -184,15 +196,44 @@ function deleteJob()
 	
 	if [ $jobID = "current" ]
 	then
-		procIDList=`cat $CURRENT_JOB_HOME/pids`
-		procIDFirst=`echo $procIDList | awk '{print $1}'`
+		simultaneousJobs=`cat $DATA_DIR/sjobs`
+		for cid in `seq 1 $simultaneousJobs`
+		do
+			if [ -d "$CURRENT_JOB_HOME-$cid" ]
+			then
+				procIDList=`cat $CURRENT_JOB_HOME-$cid/pids`
+				procIDFirst=`echo $procIDList | awk '{print $1}'`
+				
+				if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
+				then
+					kill -9 $procIDList
+				fi
+				
+				echo "Job with id=current-$cid has been deleted !!"
+			fi
+		done
 		
-		if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
+		return
+	fi
+	
+	if [[ $jobID =~ current-* ]]
+	then
+		cid=`echo $jobID | sed 's/current-//g'`
+		if [ -d "$CURRENT_JOB_HOME-$cid" ]
 		then
-			kill -9 $procIDList
+			procIDList=`cat $CURRENT_JOB_HOME-$cid/pids`
+			procIDFirst=`echo $procIDList | awk '{print $1}'`
+			
+			if [ -n "`ps -u $USER | awk '{print $1}' | grep "$procIDFirst"`" ]
+			then
+				kill -9 $procIDList
+			fi
+			
+			echo "Job with id=current-$cid has been deleted !!"
+		else
+			echo "Job with id=$jobID not found !!"
 		fi
 		
-		echo "Job with id=current has been deleted !!"
 		return
 	fi
 	
@@ -250,7 +291,7 @@ function sjobq.push()
 	
 	echo "id      = $jobID"
 	echo "command = $command"
-	echo "dir     = `echo $PWD | sed 's/\/home\/'$USER'\//~\//g'`"
+	echo "dir     = `echo $PWD | sed 's/^.*\/home\/'$USER'\//~\//g'`"
 
 	echo "$jobID" > $DATA_DIR/$jobID.bid
 	echo "$command" > $DATA_DIR/$jobID.com
