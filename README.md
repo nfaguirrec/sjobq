@@ -1,5 +1,8 @@
 SJobQ is a very simple queue system written in Bourne shell. It manages serial executions that run in a local form. The aim is to keep the computer working all the time, in order to exploit as much as possible your available computing resources. Regarding standard available programs to manage queues, very often they are a bit complicated to install and/or to configure, or simply you need administrative privileges to install them and you have no those permissions. For these cases, SJobQ is the solution, because in order to install it, you only need to download six files and that's all !. You can start to work. 
 
+## Authors
+* Nestor F. Aguirre ( nfaguirrec@gmail.com )
+
 ### INSTALLING
 Download the .zip file from this page and extract the files,
 ```
@@ -328,6 +331,3 @@ The SjobQ configuration has been cleaned up successfully !!
  SJobQ daemon has been stopped
 ==============================
 ```
-
-# Authors
-* Nestor F. Aguirre ( nfaguirrec@gmail.com )
