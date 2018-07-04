@@ -329,6 +329,5 @@ The SjobQ configuration has been cleaned up successfully !!
 ==============================
 ```
 
-### Authors and Contributors
-Néstor F. Aguirre (@nfaguirrec) 2010-2016
-http://nfaguirrec.github.io/sjobq/
+# Authors
+* Nestor F. Aguirre ( nfaguirrec@gmail.com )
