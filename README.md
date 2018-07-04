@@ -3,6 +3,12 @@ SJobQ is a very simple queue system written in Bourne shell. It manages serial e
 ## Authors
 * Nestor F. Aguirre ( nfaguirrec@gmail.com )
 
+## Citing
+
+To cite the code, please proceed as follows:
+
+[![DOI](https://zenodo.org/badge/75976231.svg)](https://doi.org/10.5281/zenodo.1304754)
+
 ### INSTALLING
 Download the .zip file from this page and extract the files,
 ```
