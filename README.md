@@ -9,7 +9,7 @@ SJobQ is a queue system written in Bourne shell. It manages serial executions th
 
 To cite the code, please proceed as follows:
 
-[![DOI](https://zenodo.org/badge/75976231.svg)](https://doi.org/10.5281/zenodo.1304754)
+[![DOI](https://zenodo.org/badge/33068598.svg)](https://zenodo.org/badge/latestdoi/33068598)
 
 ### INSTALLING
 Download the .zip file from this page and extract the files,
