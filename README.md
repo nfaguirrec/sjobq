@@ -11,6 +11,16 @@ To cite the code, please proceed as follows:
 
 [![DOI](https://zenodo.org/badge/33068598.svg)](https://zenodo.org/badge/latestdoi/33068598)
 
+### SYSTEM REQUIREMENTS
+
+sjobq is known to work on GNU/Linux. However, it should work on any POSIX-compliant system.
+
+**Dependencies:**
+
+- **[GNU Bash](https://www.gnu.org/software/bash/)**
+
+- **[GNU Awk (gawk)](https://www.gnu.org/software/gawk/)** (version >= 4.0)
+
 ### INSTALLING
 Download the .zip file from this page and extract the files,
 ```
