@@ -24,7 +24,9 @@
 #    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                      #
 ########################################################################################
 
+# This directory defines the identity of the daemon
 DATA_DIR="/var/tmp/$USER/sjobq.data"
+
 COUNTER_FILE="$DATA_DIR/counter"
 CURRENT_JOB_HOME="$DATA_DIR/current"
 MAX_HISTORY="10"

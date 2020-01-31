@@ -24,7 +24,9 @@
 #    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                      #
 ########################################################################################
 
+# This directory defines the identity of the daemon
 DATA_DIR="/var/tmp/$USER/sjobq.data"
+
 COUNTER_FILE="$DATA_DIR/counter"
 STOP_FILE="$DATA_DIR/stop"
 REFRESH_INTERVAL="2"
@@ -172,7 +174,7 @@ function stopDaemon()
 		simultaneousJobs=`cat $DATA_DIR/sjobs`
 		for cid in `seq 1 $simultaneousJobs`
 		do
-			if [ -d "$CURRENT_JOB_HOME-$cid" ]
+			if [ -f "$CURRENT_JOB_HOME-$cid/pids" ]
 			then
 				procIDList=`cat $CURRENT_JOB_HOME-$cid/pids`
 				procIDFirst=`echo $procIDList | awk '{print $1}'`
@@ -245,13 +247,19 @@ function main()
 {
 	case $1 in
 		start)
-			runningID=`ps -u $USER | grep "sjobq.daemon$" | head -n1 | awk '{print $1; exit}'`
-			
-			if [ "$runningID" -ne "$$" ]
+			if [ -f "$DATA_DIR/daemon.pid" ]
 			then
-				echo "### Error ### The daemon sjobq.daemon is already running"
-				echo "              You might want to run \"sjobq.daemon stop\" to stop it."
-				exit 1
+				runningIDs=`ps -u $USER | grep "sjobq.daemon$" | awk '{print $1}'`
+				
+				for runningID in $runningIDs
+				do
+					if [ "$runningID" -eq "`cat $DATA_DIR/daemon.pid`" ]
+					then
+						echo "### Error ### The daemon sjobq.daemon is already running"
+						echo "              You might want to run \"sjobq.daemon stop\" to stop it."
+						exit 1
+					fi
+				done
 			fi
 				
 			if [ ! -d "$DATA_DIR" ]
@@ -270,16 +278,28 @@ function main()
 			echo "==============================="
 			;;
 		stop)
-			nRunningID=`ps -u $USER | grep "sjobq.daemon$" | wc -l`
+			runningIDs=`ps -u $USER | grep "sjobq.daemon$" | awk '{print $1}'`
 			
-			if [ "$nRunningID" -gt 2 ]  # @todo I can not understand why 2 insted 1
+			loc=0
+			for runningID in $runningIDs
+			do
+				if [ -f "$DATA_DIR/daemon.pid" ]
+				then
+					if [ "$runningID" -eq "`cat $DATA_DIR/daemon.pid`" ]
+					then
+						stopDaemon $2
+						
+						echo "==============================="
+						echo " SJobQ daemon has been stopped"
+						echo "==============================="
+						
+						loc=1
+					fi
+				fi
+			done
+			
+			if [ "$loc" -eq 0 ]
 			then
-				stopDaemon $2
-				
-				echo "==============================="
-				echo " SJobQ daemon has been stopped"
-				echo "==============================="
-			else
 				echo "### Error ### The daemon sjobq.daemon is not running"
 				echo "              You might want to run \"sjobq.daemon start\" to correct this."
 				exit 1
@@ -307,6 +327,7 @@ function main()
 			echo "================================="
 			;;
 		__start)
+			echo $$ > $DATA_DIR/daemon.pid
 			startDaemon
 			;;
 		*)
